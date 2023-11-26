@@ -152,6 +152,7 @@
     <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\timers.c" />
     <ClCompile Include="static_services.c" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="wsa_server.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\atomic.h" />
