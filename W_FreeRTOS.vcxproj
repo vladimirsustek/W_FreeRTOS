@@ -150,6 +150,7 @@
     <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\stream_buffer.c" />
     <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\tasks.c" />
     <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\timers.c" />
+    <ClCompile Include="static_services.c" />
     <ClCompile Include="W_FreeRTOS.c" />
   </ItemGroup>
   <ItemGroup>
@@ -175,6 +176,7 @@
     <ClInclude Include="FreeRTOSConfig.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="StaticAllocation.h" />
+    <ClInclude Include="static_services.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

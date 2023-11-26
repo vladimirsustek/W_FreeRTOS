@@ -66,6 +66,9 @@
     <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Demo\Common\Minimal\StaticAllocation.c">
       <Filter>FreeRTOS\Source</Filter>
     </ClCompile>
+    <ClCompile Include="static_services.c">
+      <Filter>FreeRTOS\Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\atomic.h">
@@ -132,6 +135,9 @@
       <Filter>FreeRTOS\Source</Filter>
     </ClInclude>
     <ClInclude Include="StaticAllocation.h">
+      <Filter>FreeRTOS\Source</Filter>
+    </ClInclude>
+    <ClInclude Include="static_services.h">
       <Filter>FreeRTOS\Source</Filter>
     </ClInclude>
   </ItemGroup>
