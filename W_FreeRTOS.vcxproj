@@ -114,7 +114,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions); _CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\FreeRTOS\FreeRTOS\Source\include;C:\FreeRTOS\FreeRTOS\Source\portable\Common;C:\FreeRTOS\FreeRTOS\Source\portable\MSVC-MingW;C:\VSC\W_FreeRTOS</AdditionalIncludeDirectories>
     </ClCompile>
@@ -151,7 +151,7 @@
     <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\tasks.c" />
     <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\timers.c" />
     <ClCompile Include="static_services.c" />
-    <ClCompile Include="W_FreeRTOS.c" />
+    <ClCompile Include="main.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\atomic.h" />

@@ -33,7 +33,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="W_FreeRTOS.c">
+    <ClCompile Include="main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\portable\Common\mpu_wrappers.c">
