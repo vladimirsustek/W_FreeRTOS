@@ -63,6 +63,9 @@
     <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\portable\MSVC-MingW\port.c">
       <Filter>FreeRTOS\Source\portable\MSVC-MingGW</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Demo\Common\Minimal\StaticAllocation.c">
+      <Filter>FreeRTOS\Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\atomic.h">

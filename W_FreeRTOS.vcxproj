@@ -140,6 +140,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Demo\Common\Minimal\StaticAllocation.c" />
     <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\croutine.c" />
     <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\event_groups.c" />
     <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\list.c" />
