@@ -45,6 +45,9 @@ extern "C" {
 	static StaticTask_t xCheckTask;
 	static StackType_t ucTaskStack[configMINIMAL_STACK_SIZE * sizeof(StackType_t)];
 
+	static StaticTask_t xNotifiedTask;
+	static StackType_t ucNotifiedTaskStack[configMINIMAL_STACK_SIZE * sizeof(StackType_t)];
+
 	static StaticTask_t xConsoleInTask;
 	static StackType_t ucConsoleInTaskStack[configMINIMAL_STACK_SIZE * sizeof(StackType_t)];
 
@@ -55,33 +58,68 @@ extern "C" {
 	static StackType_t ucWinSockClientTaskStack[configMINIMAL_STACK_SIZE * sizeof(StackType_t)];
 
 	static StaticTask_t xWinSockServerTask;
-	static StackType_t ucWinSockServerStack[configMINIMAL_STACK_SIZE * sizeof(StackType_t)];
+	static StackType_t ucWinSockServerTaskStack[configMINIMAL_STACK_SIZE * sizeof(StackType_t)];
 
 	static StaticQueue_t inoutQueue;
 	static QueueHandle_t inoutQueueHandle;
 	static char queueStorage[INOUT_QUEUE_SIZE_MAX];
 
-    WSADATA wsaData;
+	TaskHandle_t notifiedTaskHandle;
 
 	void prvCheckTask(void* pvParameters);
 	void consoleInTask(void* pvParameters);
 	void consoleOutTask(void* pvParameters);
+	void notifiedTask(void* pvParameters);
 
 	extern void winSockServerTask(void* pvParameters);
-	void winSockClientTask(void* pvParameters);
+	extern void winSockClientTask(void* pvParameters);
+
+	typedef enum {INVALID, SERVER, CLIENT} instance_type_e;
 
 	/* Force C-calling main (ensures cleaning e.g. WSA) */
-	int __cdecl main()
+	int __cdecl main(int argc, char** argv)
 	{
+		instance_type_e instance_type = INVALID;
+
+		// Validate the parameters
+		if (argc != 2) {
+			printf("usage: %s server-name\n", argv[0]);
+			(void)getchar();
+			return 1;
+		}
+		if (0 == memcmp(argv[1], "Server", strlen("Server")))
+		{
+			instance_type = SERVER;
+		}
+		else if (0 == memcmp(argv[1], "Client", strlen("Client")))
+		{
+			instance_type = CLIENT;
+		}
+		else
+		{
+			printf("Single argument \"Client\" or \"Server\" missing\n");
+			(void)getchar();
+			return -1;
+		}
+
+		printf("%s instance running\n", argv[1]);
+
 		vStartStaticallyAllocatedTasks();
         
-        // Initialize Winsock
-		assert(0 == WSAStartup(MAKEWORD(2, 2), &wsaData));
-
 		xTaskCreateStatic(prvCheckTask, "Check", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, ucTaskStack, &xCheckTask);
 		xTaskCreateStatic(consoleInTask, "Send", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, ucConsoleInTaskStack, &xConsoleInTask);
 		xTaskCreateStatic(consoleOutTask, "Receive", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 3, ucConsoleOutTaskStack, &xConsoleOutTask);
-		xTaskCreateStatic(winSockServerTask, "Server", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 4, ucWinSockServerStack, &xWinSockServerTask);
+
+		notifiedTaskHandle = xTaskCreateStatic(notifiedTask, "Notified", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES-5, ucNotifiedTaskStack, &xNotifiedTask);
+
+		if (instance_type == CLIENT)
+		{
+			xTaskCreateStatic(winSockClientTask, "Client", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 4, ucWinSockClientTaskStack, &xWinSockClientTask);
+		}
+		else if (instance_type == SERVER)
+		{
+			xTaskCreateStatic(winSockServerTask, "Server", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 4, ucWinSockServerTaskStack, &xWinSockServerTask);
+		}
 
 		inoutQueueHandle = xQueueCreateStatic(sizeof(uint8_t), INOUT_QUEUE_SIZE_MAX, (uint8_t*)queueStorage, &inoutQueue);
 
@@ -99,15 +137,19 @@ extern "C" {
 		/* Just to remove compiler warning. */
 		(void)pvParameters;
 
+		static uint32_t value = 0x55555555;
+
 		for (;; )
 		{
 			/* Place this task in the blocked state until it is time to run again. */
 			vTaskDelay(xCycleFrequency);
+
+			xTaskNotify(notifiedTaskHandle, value, eSetValueWithOverwrite);
 			/* Check the tasks that use static allocation are still executing. */
 			if (xAreStaticAllocationTasksStillRunning() != pdPASS)
 			{
 				portENTER_CRITICAL();
-				printf("xAreStaticAllocationTasksStillRunning == pdFALSE\r\n");
+				safePrint("xAreStaticAllocationTasksStillRunning == pdFALSE\r\n");
 				__debugbreak();
 				while (1);
 			}
@@ -128,7 +170,6 @@ extern "C" {
 			sprintf(internal_buffer, "Seconds running: %d\n\0", num++);
 			portEXIT_CRITICAL();
 
-
 			xQueueSend(inoutQueueHandle, internal_buffer, portMAX_DELAY);
 
 			vTaskDelay(pdMS_TO_TICKS(500));
@@ -145,22 +186,19 @@ extern "C" {
 
 			if (xQueueReceive(inoutQueueHandle, internal_buffer, portMAX_DELAY) == pdPASS)
 			{
-				portENTER_CRITICAL();
-				printf("%s", internal_buffer);
-				portEXIT_CRITICAL();
+				safePrint("%s", internal_buffer);
 			}
 
 		}
 	}
 
-	void winSockClientTask(void *pvParameters)
+	void notifiedTask(void* pvParameters)
 	{
 		for (;;)
 		{
-			/* To be done */
-			vTaskDelay(pdMS_TO_TICKS(1000));
+			uint32_t notifiedTask = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+			safePrint("notifiedTask: 0x%08x\n", notifiedTask);
 		}
-
 	}
 }
 

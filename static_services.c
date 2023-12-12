@@ -91,3 +91,13 @@ void vApplicationGetTimerTaskMemory(StaticTask_t** ppxTimerTaskTCBBuffer, StackT
 	configMINIMAL_STACK_SIZE is specified in words, not bytes. */
 	*pulTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
 }
+
+void safePrint(const char* format, ...)
+{
+	portENTER_CRITICAL();
+	va_list argptr;
+	va_start(argptr, format);
+	vfprintf(stdout, format, argptr);
+	va_end(argptr);
+	portEXIT_CRITICAL();
+}

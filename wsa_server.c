@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <conio.h>
 #include <intrin.h>
+#include <assert.h>
 
 /* FreeRTOS kernel includes. */
 #include "FreeRTOS.h"
@@ -31,16 +32,6 @@
 // #pragma comment (lib, "Mswsock.lib")
 
 #include "portmacro.h"
-
-void safePrint(const char* format, ...)
-{
-	portENTER_CRITICAL();
-	va_list argptr;
-	va_start(argptr, format);
-	vfprintf(stdout, format, argptr);
-	va_end(argptr);
-	portEXIT_CRITICAL();
-}
 
 #define FATAL_ERROR() while(1)
 
@@ -74,6 +65,9 @@ void winSockServerTask(void* pvParameters)
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_PASSIVE;
 
+	WSADATA wsaData;
+	assert(0 == WSAStartup(MAKEWORD(2, 2), &wsaData));
+
 	for (;;)
 	{
 		SOCKET ListenSocket = INVALID_SOCKET;
@@ -85,21 +79,27 @@ void winSockServerTask(void* pvParameters)
 		SOCKET_OPERATION(bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen));
 		SOCKET_OPERATION(listen(ListenSocket, SOMAXCONN));
 		socketSetNonBlocking(ListenSocket);
-
+		safePrint("Server is listening\n");
 		do
 		{
 			// Accept a client socket (non-blocking mode
+			portENTER_CRITICAL();
 			ClientSocket = accept(ListenSocket, NULL, NULL);
+			portEXIT_CRITICAL();
 			vTaskDelay(100);
 		} while (ClientSocket == INVALID_SOCKET);
+
+		safePrint("Server: Accepted\n");
 
 		// No longer need server socket
 		SOCKET_OPERATION(closesocket(ListenSocket));
 
 		// Receive until the peer shuts down the connection
 		do {
-
+			portENTER_CRITICAL();
 			iResult = recv(ClientSocket, recvbuf, recvbuflen, 0);
+			portEXIT_CRITICAL();
+
 			if (iResult > 0) {
 				safePrint("Length: %d, Content: %s\n%", iResult, recvbuf);
 				iSendResult = send(ClientSocket, recvbuf, iResult, 0);

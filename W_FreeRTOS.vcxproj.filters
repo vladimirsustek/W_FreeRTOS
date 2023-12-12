@@ -72,6 +72,9 @@
     <ClCompile Include="wsa_server.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="wsa_client.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\atomic.h">

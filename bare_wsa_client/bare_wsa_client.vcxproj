@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{0dd2b7cb-2403-400f-ad7a-862e330a6169}</ProjectGuid>
-    <RootNamespace>WFreeRTOS</RootNamespace>
+    <ProjectGuid>{c5f8be08-e869-44b5-9da6-4619b7eabbe5}</ProjectGuid>
+    <RootNamespace>barewsaclient</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -70,18 +70,6 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -114,9 +102,8 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions); _CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\FreeRTOS\FreeRTOS\Source\include;C:\FreeRTOS\FreeRTOS\Source\portable\Common;C:\FreeRTOS\FreeRTOS\Source\portable\MSVC-MingW;C:\VSC\W_FreeRTOS</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -140,45 +127,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Demo\Common\Minimal\StaticAllocation.c" />
-    <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\croutine.c" />
-    <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\event_groups.c" />
-    <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\list.c" />
-    <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\portable\Common\mpu_wrappers.c" />
-    <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\portable\MSVC-MingW\port.c" />
-    <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\queue.c" />
-    <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\stream_buffer.c" />
-    <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\tasks.c" />
-    <ClCompile Include="..\..\FreeRTOS\FreeRTOS\Source\timers.c" />
-    <ClCompile Include="static_services.c" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="wsa_client.c" />
-    <ClCompile Include="wsa_server.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\atomic.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\croutine.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\deprecated_definitions.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\event_groups.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\FreeRTOS.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\list.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\message_buffer.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\mpu_prototypes.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\mpu_wrappers.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\portable.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\projdefs.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\queue.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\semphr.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\StackMacros.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\stack_macros.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\stream_buffer.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\task.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\include\timers.h" />
-    <ClInclude Include="..\..\FreeRTOS\FreeRTOS\Source\portable\MSVC-MingW\portmacro.h" />
-    <ClInclude Include="FreeRTOSConfig.h" />
-    <ClInclude Include="resource.h" />
-    <ClInclude Include="StaticAllocation.h" />
-    <ClInclude Include="static_services.h" />
+    <ClCompile Include="bare_wsa_client.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
