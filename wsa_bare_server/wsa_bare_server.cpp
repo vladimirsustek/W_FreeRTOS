@@ -12,16 +12,26 @@
 #pragma comment (lib, "Ws2_32.lib")
 // #pragma comment (lib, "Mswsock.lib")
 
-#define DEFAULT_BUFLEN 512
+#define DEFAULT_BUFLEN (1 << 15)
 #define DEFAULT_PORT "27015"
+
+static void socketSetNonBlocking(SOCKET s)
+{
+	/* Mode = '1' for non-blocking*/
+	u_long mode = 1;
+	ioctlsocket(s, FIONBIO, &mode);
+}
 
 int __cdecl app(void)
 {
 	WSADATA wsaData;
 	int iResult;
+	int non_block_conn_err = 0;
 
 	SOCKET ListenSocket = INVALID_SOCKET;
 	SOCKET ClientSocket = INVALID_SOCKET;
+
+	socketSetNonBlocking(ListenSocket);
 
 	struct addrinfo* result = NULL;
 	struct addrinfo hints;
@@ -80,16 +90,43 @@ int __cdecl app(void)
 		return 1;
 	}
 
-	printf("server is listening...\n");
+	printf("Server is waiting to finish accept operation\n");
 
-	// Accept a client socket
-	ClientSocket = accept(ListenSocket, NULL, NULL);
-	if (ClientSocket == INVALID_SOCKET) {
-		printf("accept failed with error: %d\n", WSAGetLastError());
-		closesocket(ListenSocket);
-		WSACleanup();
-		return 1;
+	int select_result = 0;
+	while (1)
+	{
+		/* Use select to determine the completion of the connection request
+			by checking if the socket is writeable
+			As only one socket is created and passed as argument, the result
+			mus be 1*/
+			// Check for incoming connections using select
+		fd_set readSet;
+		FD_ZERO(&readSet);
+		FD_SET(ListenSocket, &readSet);
+
+		timeval timeout;
+		timeout.tv_sec = 1; // 1 second timeout
+		timeout.tv_usec = 0;
+
+		int result = select(0, &readSet, nullptr, nullptr, &timeout);
+
+		if (result == SOCKET_ERROR) {
+			printf("select failed with error: %d\n", WSAGetLastError());
+			break;
+		}
+
+		if (result > 0) {
+			// Accept the incoming connection
+			ClientSocket = accept(ListenSocket, nullptr, nullptr);
+			if (ClientSocket == INVALID_SOCKET) {
+				printf("Accept failed with error: %d\n ", WSAGetLastError());
+			}
+			else {
+				printf("Connection accepted.\n");
+			}
+		}
 	}
+
 
 	// No longer need server socket
 	closesocket(ListenSocket);
@@ -105,7 +142,7 @@ int __cdecl app(void)
 			// Echo the buffer back to the sender
 			memcpy(recvbuf + strlen(msg), recvbuf, iResult);
 			memcpy(recvbuf, msg, strlen(msg));
-			iSendResult = send(ClientSocket, recvbuf, iResult+strlen(msg), 0);
+			iSendResult = send(ClientSocket, recvbuf, iResult + strlen(msg), 0);
 			if (iSendResult == SOCKET_ERROR) {
 				printf("send failed with error: %d\n", WSAGetLastError());
 				closesocket(ClientSocket);

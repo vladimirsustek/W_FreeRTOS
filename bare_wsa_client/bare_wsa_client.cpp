@@ -13,10 +13,8 @@
 #pragma comment (lib, "AdvApi32.lib")
 
 
-#define DEFAULT_BUFLEN 512
+#define DEFAULT_BUFLEN (1 << 15)
 #define DEFAULT_PORT "27015"
-
-#define WSAEWOULDBLOCK 10035
 
 static void socketSetNonBlocking(SOCKET s)
 {
@@ -181,7 +179,7 @@ int app(int argc, char** argv)
 
 int __cdecl main(int argc, char** argv)
 {
-    Sleep(1000);
+    Sleep(2500);
 
     for(int i = 0; i < 5; i++)
     {
