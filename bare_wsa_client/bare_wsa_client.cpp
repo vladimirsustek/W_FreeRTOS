@@ -13,177 +13,203 @@
 #pragma comment (lib, "AdvApi32.lib")
 
 
-#define DEFAULT_BUFLEN (1 << 15)
+#define DEFAULT_BUFLEN (1 << 10)
 #define DEFAULT_PORT "27015"
+
+#define ONE_SOCKET_AVAILABLE 1
+#define APP_ERR -1
 
 static void socketSetNonBlocking(SOCKET s)
 {
-    /* Mode = '1' for non-blocking*/
-    u_long mode = 1;
-    ioctlsocket(s, FIONBIO, &mode);
+	/* Mode = '1' for non-blocking*/
+	u_long mode = 1;
+	ioctlsocket(s, FIONBIO, &mode);
 }
 
 int app(int argc, char** argv)
 {
-    WSADATA wsaData;
-    SOCKET ConnectSocket = INVALID_SOCKET;
-    struct addrinfo* result = NULL,
-        * ptr = NULL,
-        hints;
-    char recvbuf[DEFAULT_BUFLEN] = { 0 };
-    int iResult;
-    int recvbuflen = DEFAULT_BUFLEN;
+	WSADATA wsaData;
+	SOCKET ConnectSocket = INVALID_SOCKET;
 
-    // Validate the parameters
-    if (argc != 2) {
-        printf("usage: %s server-name\n", argv[0]);
-        return 1;
-    }
+	addrinfo* serverAdr = NULL;
+	addrinfo serverAdrHints;
 
-    // Initialize Winsock
-    iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-    if (iResult != 0) {
-        printf("WSAStartup failed with error: %d\n", iResult);
-        return 1;
-    }
+	fd_set writeOpConnectFDset;
+	fd_set readOpRecvFDset;
 
-    ZeroMemory(&hints, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
+	/* Initialized as 10 * 1000us = 1ms */
+	timeval nonBlockOpMaxTimeout = { 0,(10 * 1000) };
 
-    // Resolve the server address and port
-    iResult = getaddrinfo(argv[1], DEFAULT_PORT, &hints, &result);
-    if (iResult != 0) {
-        printf("getaddrinfo failed with error: %d\n", iResult);
-        WSACleanup();
-        return 1;
-    }
+	/* Huge buffer, may be moved to be a static global */
+	char clientRecvBuff[DEFAULT_BUFLEN] = { 0 };
+	int sockOpResult;
+	int clientRecvBuffSize = DEFAULT_BUFLEN;
+	int recentWSAError = -1;
 
-    ptr = result;
+	/* Yes, used to indicate how many times
+	must be function call to do desired operation */
+	int nonBlockingPollingLoops = 0;
 
-    // Create a SOCKET for connecting to server
-    ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype,
-        ptr->ai_protocol);
+	const char clientMsg[] = "1st message from client\n";
 
-    if (ConnectSocket == INVALID_SOCKET) {
-        printf("socket failed with error: %ld\n", WSAGetLastError());
-        WSACleanup();
-        return 1;
-    }
+	bool clientConnected = false;
 
-    socketSetNonBlocking(ConnectSocket);
+	// Validate the parameters
+	if (argc != 2) {
+		printf("usage: %s client-name\n", argv[0]);
+		return APP_ERR;
+	}
 
-    // Attempt to connect to an address until one succeeds
-    int non_block_conn_err = 1;
-    fd_set wr_set;
-    struct timeval timeout = { 0,(10*1000) }; //10*1000 us
-    int num_of_sockets = 0;
+	// Initialize Winsock
+	sockOpResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (sockOpResult != 0) {
+		printf("WSAStartup failed with error: %d\n", sockOpResult);
+		return APP_ERR;
+	}
 
-    FD_ZERO(&wr_set);
-    FD_SET(ConnectSocket, &wr_set);
+	ZeroMemory(&serverAdrHints, sizeof(serverAdrHints));
+	serverAdrHints.ai_family = AF_UNSPEC;
+	serverAdrHints.ai_socktype = SOCK_STREAM;
+	serverAdrHints.ai_protocol = IPPROTO_TCP;
 
-    iResult = connect(ConnectSocket, ptr->ai_addr, ptr->ai_addrlen);
+	// Resolve the server address and port
+	sockOpResult = getaddrinfo(argv[1], DEFAULT_PORT, &serverAdrHints, &serverAdr);
+	if (sockOpResult != 0) {
+		printf("getaddrinfo failed with error: %d\n", sockOpResult);
+		WSACleanup();
+		return APP_ERR;
+	}
 
-    non_block_conn_err = WSAGetLastError();
+	while (clientConnected == false)
+	{
+		// Create a SOCKET for connecting to server
+		ConnectSocket = socket(serverAdr->ai_family, serverAdr->ai_socktype,
+			serverAdr->ai_protocol);
 
-    if (non_block_conn_err != WSAEWOULDBLOCK && non_block_conn_err != 0)
-    {
-        printf("Other problem occured: %d\n", non_block_conn_err);
-    }
+		socketSetNonBlocking(ConnectSocket);
+		FD_ZERO(&writeOpConnectFDset);
+		FD_SET(ConnectSocket, &writeOpConnectFDset);
 
-    printf("Client is waiting to finish connect operation\n");
+		if (ConnectSocket == INVALID_SOCKET) {
+			printf("socket failed with error: %ld\n", WSAGetLastError());
+			WSACleanup();
+			return APP_ERR;
+		}
 
-    while (1)
-    {
-        static int loops = 1;
-        /* Use select to determine the completion of the connection request
-            by checking if the socket is writeable
-            As only one socket is created and passed as argument, the result
-            mus be 1*/
-        if (1 == select(ConnectSocket, 0, &wr_set, 0, &timeout))
-        {
-            printf("1 Socket to write is available - connected, looped: %ld [ms]\n", loops*timeout.tv_usec/1000);
-            break;
-        }
-        loops++;
-    }
+		sockOpResult = connect(ConnectSocket, serverAdr->ai_addr, serverAdr->ai_addrlen);
 
-    freeaddrinfo(result);
+		recentWSAError = WSAGetLastError();
 
-    // Send an initial buffer
-    iResult = send(ConnectSocket, "1st message from client\n", (int)strlen("1st message from client\n"), 0);
-    if (iResult == SOCKET_ERROR) {
-        printf("send failed with error: %d\n", WSAGetLastError());
-        closesocket(ConnectSocket);
-        WSACleanup();
-        return 1;
-    }
+		if (recentWSAError != WSAEWOULDBLOCK && recentWSAError != 0)
+		{
+			printf("Other problem occured: %d\n", recentWSAError);
+		}
 
-    printf("Bytes Sent: %ld\n", iResult);
+		printf("Client is waiting to finish connect operation\n");
 
-    // shutdown the connection since no more data will be sent
-    iResult = shutdown(ConnectSocket, SD_SEND);
-    if (iResult == SOCKET_ERROR) {
-        printf("shutdown failed with error: %d\n", WSAGetLastError());
-        closesocket(ConnectSocket);
-        WSACleanup();
-        return 1;
-    }
+		nonBlockingPollingLoops = 1;
+		while (1)
+		{
+			/* Use select to determine the completion of the connection request
+				by checking if the socket is writeable. As only one socket is created and
+				passed as argument, the result must be 1*/
+			if (ONE_SOCKET_AVAILABLE == select(ConnectSocket, 0, &writeOpConnectFDset, 0, &nonBlockOpMaxTimeout))
+			{
+				printf("1 Socket to write is available - connected, loop-ed: %ld [ms]\n", nonBlockingPollingLoops * nonBlockOpMaxTimeout.tv_usec / 1000);
+				clientConnected = true;
+				break;
+			}
 
-    // Receive until the peer closes the connection
-    do {
+			Sleep(10);
 
-        iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
-        if (iResult < 0 && WSAGetLastError() == WSAEWOULDBLOCK)
-        {
-            int select_result = 0;
-            fd_set rd_set;
-            FD_ZERO(&rd_set);
-            FD_SET(ConnectSocket, &rd_set);
-            while (1)
-            {
-                static int loops = 1;
-                /* Use select to determine the completion of the receive request
-                    by checking if the socket is readable
-                    As only one socket is created and passed as argument, the result
-                    mus be 1*/
-                if (1 == select(ConnectSocket, &rd_set, NULL, 0, &timeout))
-                {
-                    iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
-                    printf("1 Socket to read is available - connected, looped: %ld [ms]\n", loops * timeout.tv_usec / 1000);
-                    break;
-                }
-            }
+			if (nonBlockingPollingLoops < 100)
+			{
+				nonBlockingPollingLoops++;
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
 
-        }
-        if (iResult > 0)
-        {
-            printf("Bytes received: %d\n", iResult);
-            printf(recvbuf);
-            memset(recvbuf, 0, recvbuflen);
-        }
-        else if (iResult == 0)
-            printf("Connection closed\n");
-        else
-            printf("recv failed with error: %d\n", WSAGetLastError());
+	freeaddrinfo(serverAdr);
 
-    } while (iResult > 0);
+	// Send an initial buffer
+	sockOpResult = send(ConnectSocket, clientMsg, (int)strlen(clientMsg), 0);
+	if (sockOpResult == SOCKET_ERROR) {
+		printf("send failed with error: %d\n", WSAGetLastError());
+		closesocket(ConnectSocket);
+		WSACleanup();
+		return APP_ERR;
+	}
 
-    // cleanup
-    closesocket(ConnectSocket);
-    WSACleanup();
+	printf("Bytes Sent: %ld\n", sockOpResult);
 
-    return 0;
+	// shutdown the connection since no more data will be sent
+	sockOpResult = shutdown(ConnectSocket, SD_SEND);
+	if (sockOpResult == SOCKET_ERROR) {
+		printf("shutdown failed with error: %d\n", WSAGetLastError());
+		closesocket(ConnectSocket);
+		WSACleanup();
+		return APP_ERR;
+	}
+
+	printf("Client is waiting to receive \n");
+
+	// Receive until the peer closes the connection
+	do {
+
+		sockOpResult = recv(ConnectSocket, clientRecvBuff, clientRecvBuffSize, 0);
+		if (sockOpResult < 0 && WSAGetLastError() == WSAEWOULDBLOCK)
+		{
+			FD_ZERO(&readOpRecvFDset);
+			FD_SET(ConnectSocket, &readOpRecvFDset);
+			nonBlockingPollingLoops = 1;
+			while (1)
+			{
+				/* Use select to determine the completion of the receive request
+				by checking if the socket is readable. As only one socket is created and
+				passed as argument, the result must be 1*/
+				if (ONE_SOCKET_AVAILABLE == select(ConnectSocket, &readOpRecvFDset, NULL, 0, &nonBlockOpMaxTimeout))
+				{
+					sockOpResult = recv(ConnectSocket, clientRecvBuff, clientRecvBuffSize, 0);
+					printf("1 Socket to read is available - something received, loop-ed: %ld [ms]\n", nonBlockingPollingLoops * nonBlockOpMaxTimeout.tv_usec / 1000);
+					break;
+				}
+				nonBlockingPollingLoops++;
+			}
+
+		}
+		if (sockOpResult > 0)
+		{
+			printf("Bytes received: %d\n", sockOpResult);
+			printf("RX: %s", clientRecvBuff);
+			memset(clientRecvBuff, 0, clientRecvBuffSize);
+		}
+		else if (sockOpResult == 0)
+			printf("Connection closed\n");
+		else
+			printf("recv failed with error: %d\n", WSAGetLastError());
+
+	} while (sockOpResult > 0);
+
+	// cleanup
+	closesocket(ConnectSocket);
+	WSACleanup();
+
+	return 0;
 }
 
 int __cdecl main(int argc, char** argv)
 {
-    Sleep(2500);
+	Sleep(1000);
 
-    for(int i = 0; i < 5; i++)
-    {
-        app(argc, argv);
-        Sleep(10);
-    }
+	for (int i = 0; i < 2; i++)
+	{
+		app(argc, argv);
+		Sleep(10);
+	}
+	(void)getchar();
+
 }
