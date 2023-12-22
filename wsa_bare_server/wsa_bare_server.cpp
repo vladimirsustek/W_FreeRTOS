@@ -7,6 +7,7 @@
 #include <ws2tcpip.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 // Need to link with Ws2_32.lib
 #pragma comment (lib, "Ws2_32.lib")
@@ -23,6 +24,32 @@ static void socketSetNonBlocking(SOCKET s)
 	/* Mode = '1' for non-blocking*/
 	u_long mode = 1;
 	ioctlsocket(s, FIONBIO, &mode);
+}
+
+static void timeStampPrint(const char* format, ...)
+{
+	static int already_called = 0;
+	va_list argptr;
+
+	already_called++;
+
+	/* Guard to ensure recursion is not end-less */
+	assert(already_called >= 0 && already_called <= 2);
+
+	/* Use recursion only on first call */
+	if (already_called == 1)
+	{
+		SYSTEMTIME localTime;
+		GetLocalTime(&localTime);
+		timeStampPrint("%02d:%02d:%02d:%03d ", localTime.wHour, localTime.wMinute,
+			localTime.wSecond, localTime.wMilliseconds);
+	}
+
+	va_start(argptr, format);
+	vfprintf(stdout, format, argptr);
+	va_end(argptr);
+
+	already_called--;
 }
 
 int __cdecl app(void)
@@ -62,7 +89,7 @@ int __cdecl app(void)
 	// Initialize Winsock
 	sockOpResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (sockOpResult != 0) {
-		printf("WSAStartup failed with error: %d\n", sockOpResult);
+		timeStampPrint("WSAStartup failed with error: %d\n", sockOpResult);
 		return APP_ERR;
 	}
 
@@ -75,7 +102,7 @@ int __cdecl app(void)
 	// Resolve the server address and port
 	sockOpResult = getaddrinfo("localhost", DEFAULT_PORT, &clientAdrHints, &clientAdr);
 	if (sockOpResult != 0) {
-		printf("getaddrinfo failed with error: %d\n", sockOpResult);
+		timeStampPrint("getaddrinfo failed with error: %d\n", sockOpResult);
 		WSACleanup();
 		return APP_ERR;
 	}
@@ -83,7 +110,7 @@ int __cdecl app(void)
 	// Create a SOCKET for the server to listen for client connections.
 	ListenSocket = socket(clientAdr->ai_family, clientAdr->ai_socktype, clientAdr->ai_protocol);
 	if (ListenSocket == INVALID_SOCKET) {
-		printf("socket failed with error: %ld\n", WSAGetLastError());
+		timeStampPrint("socket create failed with error: %ld\n", WSAGetLastError());
 		freeaddrinfo(clientAdr);
 		WSACleanup();
 		return APP_ERR;
@@ -92,7 +119,7 @@ int __cdecl app(void)
 	// Setup the TCP listening socket
 	sockOpResult = bind(ListenSocket, clientAdr->ai_addr, (int)clientAdr->ai_addrlen);
 	if (sockOpResult == SOCKET_ERROR) {
-		printf("bind failed with error: %d\n", WSAGetLastError());
+		timeStampPrint("bind failed with error: %d\n", WSAGetLastError());
 		freeaddrinfo(clientAdr);
 		closesocket(ListenSocket);
 		WSACleanup();
@@ -103,13 +130,13 @@ int __cdecl app(void)
 
 	sockOpResult = listen(ListenSocket, SOMAXCONN);
 	if (sockOpResult == SOCKET_ERROR) {
-		printf("listen failed with error: %d\n", WSAGetLastError());
+		timeStampPrint("listen failed with error: %d\n", WSAGetLastError());
 		closesocket(ListenSocket);
 		WSACleanup();
 		return APP_ERR;
 	}
 
-	printf("Server is waiting to finish accept operation\n");
+	timeStampPrint("Server is waiting to finish accept operation\n");
 	while ((selectResult == 0 && ClientSocket == INVALID_SOCKET))
 	{
 		/* Use select to determine the completion of the connection request
@@ -123,7 +150,7 @@ int __cdecl app(void)
 		selectResult = select(0, &readOpAcceptFDset, nullptr, nullptr, &nonBlockOpMaxTimeout);
 
 		if (selectResult == SOCKET_ERROR) {
-			printf("select failed with error: %d\n", WSAGetLastError());
+			timeStampPrint("select failed with error: %d\n", WSAGetLastError());
 			break;
 		}
 
@@ -131,10 +158,10 @@ int __cdecl app(void)
 			// Accept the incoming connection
 			ClientSocket = accept(ListenSocket, nullptr, nullptr);
 			if (ClientSocket == INVALID_SOCKET) {
-				printf("Accept failed with error: %d\n ", WSAGetLastError());
+				timeStampPrint("accept failed with error: %d\n ", WSAGetLastError());
 			}
 			else {
-				printf("Connection accepted.\n");
+				timeStampPrint("Connection accepted, %d\n", WSAGetLastError());
 			}
 		}
 	}
@@ -142,7 +169,7 @@ int __cdecl app(void)
 	// No longer need server socket
 	closesocket(ListenSocket);
 
-	printf("Server is waiting to receive \n");
+	timeStampPrint("Server is waiting to receive \n");
 
 	do {
 
@@ -161,39 +188,40 @@ int __cdecl app(void)
 				if (ONE_SOCKET_AVAILABLE == select(ClientSocket, &readOpRecvFDset, NULL, 0, &nonBlockOpMaxTimeout))
 				{
 					sockOpResult = recv(ClientSocket, serverRecvBuff, serverRecvBuffSize, 0);
-					printf("1 Socket to read is available - connected, looped: %ld [ms]\n", nonBlockingPollingLoops * nonBlockOpMaxTimeout.tv_usec / 1000);
-					break;
+					timeStampPrint("1 Socket to read is available - connected, looped: %ld [ms]\n", nonBlockingPollingLoops * nonBlockOpMaxTimeout.tv_usec / 1000);
 				}
 			}
 
 		}
 		if (sockOpResult > 0)
 		{
-			printf("Bytes received: %d\n", sockOpResult);
-			printf("RX: %s", serverRecvBuff);
+			timeStampPrint("Bytes received: %d\n", sockOpResult);
+			timeStampPrint("RX: %s", serverRecvBuff);
 			// Echo the buffer back to the sender
 			memcpy(serverRecvBuff + strlen(serverMsg), serverRecvBuff, sockOpResult);
 			memcpy(serverRecvBuff, serverMsg, strlen(serverMsg));
 			sendOpResult = send(ClientSocket, serverRecvBuff, sockOpResult + strlen(serverMsg), 0);
 			if (sendOpResult == SOCKET_ERROR) {
-				printf("send failed with error: %d\n", WSAGetLastError());
+				timeStampPrint("send failed with error: %d\n", WSAGetLastError());
 				closesocket(ClientSocket);
 				WSACleanup();
 				return APP_ERR;
 			}
-			printf("Bytes sent: %d\n", sendOpResult);
+			timeStampPrint("Bytes sent: %d\n", sendOpResult);
 		}
 		else if (sockOpResult == 0)
-			printf("Connection closed\n");
+			timeStampPrint("Connection closed\n");
 		else
-			printf("recv failed with error: %d\n", WSAGetLastError());
+			timeStampPrint("recv failed with error: %d\n", WSAGetLastError());
+
+
 
 	} while (sockOpResult > 0);
 
 	// shutdown the connection since we're done
 	sockOpResult = shutdown(ClientSocket, SD_SEND);
 	if (sockOpResult == SOCKET_ERROR) {
-		printf("shutdown failed with error: %d\n", WSAGetLastError());
+		timeStampPrint("shutdown failed with error: %d\n", WSAGetLastError());
 		closesocket(ClientSocket);
 		WSACleanup();
 		return APP_ERR;
@@ -208,12 +236,17 @@ int __cdecl app(void)
 
 int __cdecl main(int argc, char** argv)
 {
-	//printf("Waiting 2 seconds");
-	//Sleep(1000);
+	timeStampPrint("I am server\n");
 
-	for (int i = 0; i < 2; i++)
+	timeStampPrint("One\n");
+	timeStampPrint("Two\n");
+	timeStampPrint("Three\n");
+	timeStampPrint("Now!\n");
+
+	Sleep(0);
+
+	for (int i = 0; i < 1; i++)
 	{
 		app();
 	}
-	(void)getchar();
 }
