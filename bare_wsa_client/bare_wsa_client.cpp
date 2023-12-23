@@ -238,9 +238,9 @@ int __cdecl main(int argc, char** argv)
 
 	Sleep(1000);
 
-	for (int i = 0; i < 1; i++)
+	for (int i = 0; i < 10; i++)
 	{
 		app(argc, argv);
-		Sleep(10);
+		Sleep(100);
 	}
 }
